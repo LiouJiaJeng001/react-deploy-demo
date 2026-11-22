@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 產生碼修正與部署示範</title>
+<style>
+:root{--deep:#1e3a5f;--bg:#f6f8fb;--card:#fff;--line:#d5dbe3;--tint:#eef2f7;--ink:#1f2a37;--sub:#5b6675;--ok:#1f6e52;--okbg:#e7f4ee;--bad:#a8412f;--badbg:#fbeae6;--accent:#2f6fed}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",-apple-system,"Segoe UI",sans-serif;line-height:1.6}
+#hero{background:#fff;border-bottom:1px solid var(--line)}
+#hero video{display:block;width:100%;max-width:1920px;margin:0 auto;aspect-ratio:16/9;background:#f6f8fb}
+main{max-width:972px;margin:0 auto;padding:28px 16px 64px}
+h1{font-size:26px;margin:8px 0 4px;color:var(--deep)}
+.lead{color:var(--sub);margin:0 0 20px;font-size:15px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin:0 0 22px;box-shadow:0 8px 24px -16px rgba(30,58,95,.25)}
+.card h2{font-size:19px;margin:0 0 4px;color:var(--deep)}
+.card .hint{margin:0 0 14px;color:var(--sub);font-size:14px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:14px}
+.seg button{border:0;background:#fff;padding:9px 18px;font:600 15px inherit;font-family:inherit;color:var(--sub);cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--deep);color:#fff}
+.btn{border:0;border-radius:10px;background:var(--deep);color:#fff;padding:10px 18px;font:600 15px inherit;font-family:inherit;cursor:pointer}
+.btn.ghost{background:#fff;color:var(--deep);border:1px solid var(--line)}
+.btn:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:18px;flex-wrap:wrap}
+/* ---- A. 跑版修正 ---- */
+.stage{background:var(--tint);border:1px solid var(--line);border-radius:12px;padding:16px;min-height:360px;position:relative}
+.tag{position:absolute;top:10px;right:12px;font-size:13px;font-weight:700;padding:3px 10px;border-radius:999px}
+.tag.bad{background:var(--badbg);color:var(--bad)}.tag.good{background:var(--okbg);color:var(--ok)}
+.app{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:22px}
+.app .nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.app .logo{font-weight:800;color:var(--deep);font-size:17px}
+.app .cta{background:var(--accent);color:#fff;border-radius:8px;padding:7px 14px;font-weight:700;font-size:14px;white-space:nowrap}
+.app .grid{display:flex}
+.app .item{border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff}
+.app .item b{display:block;font-size:15px}.app .item span{font-size:13px;color:var(--sub)}
+.app .price{margin-top:8px;font-weight:800;color:var(--deep);font-size:18px}
+/* 跑版：寬度寫死、文字溢出、按鈕被擠出 */
+.app.broken .nav{width:560px}
+.app.broken .grid{width:640px}
+.app.broken .item{flex:0 0 220px;margin-right:-14px;height:110px;overflow:visible}
+.app.broken .item:nth-child(2){margin-top:14px}
+.app.broken .item:nth-child(3){margin-left:6px;height:140px}
+.app.broken .item b{white-space:nowrap}
+.app.broken .price{font-size:26px}
+.app.broken .foot{width:700px;margin-top:20px;font-size:12px}
+.app.fixed .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.app.fixed .item{min-width:0}
+.app.fixed .foot{margin-top:14px;font-size:13px;color:var(--sub)}
+.fixes{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:8px}
+.fixes li{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;padding:9px 12px;border-radius:9px;background:var(--tint)}
+.fixes li i{font-style:normal;font-weight:800;color:var(--ok)}
+.fixes li.off{opacity:.4}
+/* ---- B. 部署 ---- */
+.steps{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:8px}
+.steps li{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:15px}
+.steps li .n{width:26px;height:26px;border-radius:50%;background:var(--tint);color:var(--sub);display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}
+.steps li.done{background:var(--okbg);border-color:#bfe0d0}.steps li.done .n{background:var(--ok);color:#fff}
+.steps li.run{border-color:var(--accent)}.steps li.run .n{background:var(--accent);color:#fff}
+.steps li small{margin-left:auto;color:var(--sub);font-size:12.5px;font-family:Consolas,monospace}
+.term{background:#14202e;color:#cde3ff;border-radius:10px;padding:12px 14px;font:13px/1.7 Consolas,"Courier New",monospace;min-height:120px;white-space:pre-wrap}
+.term .g{color:#6fe0a6}.term .y{color:#ffd37a}
+.dom{margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:14.5px}
+.dom code{background:var(--tint);padding:3px 8px;border-radius:6px;font-family:Consolas,monospace}
+.live{display:none;background:var(--okbg);color:var(--ok);font-weight:700;padding:3px 10px;border-radius:999px}
+.live.on{display:inline-block}
+/* ---- C. 資料庫 ---- */
+.env{background:var(--tint);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font:13px/1.8 Consolas,monospace;margin-bottom:14px}
+.env b{color:var(--deep)}
+form{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+form input{flex:1 1 180px;min-width:0;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:15px inherit;font-family:inherit}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+th{background:var(--tint);color:var(--sub);font-weight:700}
+td.t{font-family:Consolas,monospace;color:var(--sub);font-size:13px}
+.note{color:var(--sub);font-size:13px;margin-top:10px}
+footer{color:var(--sub);font-size:13px;text-align:center;margin-top:8px}
+@media(max-width:640px){main{padding:18px 12px 48px}.card{padding:16px 14px}.stage{padding:10px}.app.broken .nav,.app.broken .grid,.app.broken .foot{width:640px}}
+</style>
+</head>
+<body>
+<section id="hero"><video id="v" src="hero.mp4" poster="poster.jpg" muted playsinline preload="auto"></video></section>
+<main>
+  <h1>AI 產生的網站，修好、上線、接資料庫</h1>
+  <p class="lead">下面是可以操作的示範：跑版修正前後、部署到雲端並綁定網域、串接外部資料庫。內容皆為模擬資料，商品與網域都是虛構。</p>
+
+  <section class="card" id="a">
+    <h2>① 修正 AI 產生程式碼的跑版</h2>
+    <p class="hint">按切換看同一個頁面修正前後。常見問題：寬度寫死、手機版溢出、按鈕被擠出畫面。</p>
+    <div class="seg" role="group" aria-label="切換">
+      <button id="bBad" aria-pressed="true">AI 產生的原樣</button>
+      <button id="bFix" aria-pressed="false">修正後</button>
+    </div>
+    <div class="stage" id="stage">
+      <span class="tag bad" id="tag">跑版</span>
+      <div class="app broken" id="app">
+        <div class="nav"><span class="logo">小森選物</span><span class="cta">立即訂購</span></div>
+        <div class="grid">
+          <div class="item"><b>手工陶瓷馬克杯・大容量款</b><span>每件手作，釉色略有差異</span><div class="price">NT$680</div></div>
+          <div class="item"><b>亞麻餐墊三件組</b><span>可機洗、不易起皺</span><div class="price">NT$420</div></div>
+          <div class="item"><b>木質香氛擴香座</b><span>附 30ml 擴香油</span><div class="price">NT$890</div></div>
+        </div>
+        <div class="foot">© 小森選物（示範）・本網站為模擬資料，商品皆為虛構・客服時間週一至週五 10:00–18:00</div>
+      </div>
+    </div>
+    <ul class="fixes" id="fixes">
+      <li class="off" data-k="0"><i>✓</i>導覽列與卡片改用 flex／grid，不再寫死寬度</li>
+      <li class="off" data-k="1"><i>✓</i>卡片加 <code>min-w-0</code>、文字可換行，不再溢出重疊</li>
+      <li class="off" data-k="2"><i>✓</i>「立即訂購」按鈕回到畫面內，手機版也點得到</li>
+    </ul>
+  </section>
+
+  <section class="card" id="b">
+    <h2>② 部署到雲端並綁定網域</h2>
+    <p class="hint">按「執行下一步」依序跑完整流程。這裡是流程示意，沒有真的部署。</p>
+    <ol class="steps" id="steps">
+      <li data-k="0"><span class="n">1</span>程式碼推到 GitHub<small>git push origin main</small></li>
+      <li data-k="1"><span class="n">2</span>雲端平台連結儲存庫並建置<small>npm run build</small></li>
+      <li data-k="2"><span class="n">3</span>設定環境變數（資料庫連線字串）<small>DATABASE_URL</small></li>
+      <li data-k="3"><span class="n">4</span>預覽網址檢查<small>preview.example.app</small></li>
+      <li data-k="4"><span class="n">5</span>綁定自訂網域、DNS 生效、自動 HTTPS<small>CNAME</small></li>
+    </ol>
+    <div class="term" id="term">等待開始…</div>
+    <div class="dom"><button class="btn" id="next">執行下一步</button><button class="btn ghost" id="reset">重來</button><span>網域：<code>shop.example.com</code></span><span class="live" id="live">● 已上線・HTTPS</span></div>
+  </section>
+
+  <section class="card" id="c">
+    <h2>③ 串接外部資料庫</h2>
+    <p class="hint">輸入一筆留言，按「寫入資料庫」。資料會出現在下方列表（模擬資料庫，重新整理會清空）。</p>
+    <div class="env"><b>DATABASE_URL</b>=postgres://app_user:••••••@db.example.net:5432/shop<br><b>連線狀態</b>：<span id="conn" style="color:var(--ok);font-weight:700">已連線（模擬）</span></div>
+    <form id="f"><input id="nm" value="王小美" aria-label="姓名"><input id="msg" value="想問杯子有沒有現貨" aria-label="留言"><button class="btn" type="submit">寫入資料庫</button></form>
+    <table><thead><tr><th>#</th><th>姓名</th><th>留言</th><th>寫入時間</th></tr></thead><tbody id="rows"></tbody></table>
+    <p class="note">每筆資料由後端 API 寫入資料庫；金鑰只放在環境變數，不會出現在前端程式碼。</p>
+  </section>
+  <footer>示範網站・內容皆為模擬資料</footer>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const bad=$('#bBad'),fix=$('#bFix'),app=$('#app'),tag=$('#tag');
+function setFix(on){
+  app.className='app '+(on?'fixed':'broken');
+  tag.className='tag '+(on?'good':'bad');tag.textContent=on?'已修正':'跑版';
+  bad.setAttribute('aria-pressed',!on);fix.setAttribute('aria-pressed',on);
+  document.querySelectorAll('#fixes li').forEach(li=>li.classList.toggle('off',!on));
+}
+bad.onclick=()=>setFix(false);fix.onclick=()=>setFix(true);
+const LOG=[
+ ['<span class="g">✓</span> remote: 已推送到 main（3 個檔案變更）'],
+ ['<span class="y">…</span> 偵測到 React／TypeScript 專案','<span class="g">✓</span> 安裝套件完成','<span class="g">✓</span> build 完成（輸出 dist/，約 4.2 秒）'],
+ ['<span class="g">✓</span> 已設定 DATABASE_URL（僅伺服器端可讀）'],
+ ['<span class="g">✓</span> 預覽網址可開啟，首頁與登入頁正常'],
+ ['<span class="y">…</span> 新增 CNAME：shop.example.com → cname.example.app','<span class="g">✓</span> DNS 已生效','<span class="g">✓</span> HTTPS 憑證已簽發','<span class="g">✓ 已上線</span>']
+];
+let step=0;
+const steps=[...document.querySelectorAll('#steps li')],term=$('#term');
+function renderSteps(){
+  steps.forEach((li,i)=>{li.classList.toggle('done',i<step);li.classList.toggle('run',i===step&&step<5)});
+  term.innerHTML=step?LOG.slice(0,step).flat().join('\n'):'等待開始…';
+  $('#live').classList.toggle('on',step>=5);
+  $('#next').disabled=step>=5;
+}
+$('#next').onclick=()=>{if(step<5){step++;renderSteps()}};
+$('#reset').onclick=()=>{step=0;renderSteps()};
+renderSteps();
+let n=0;const rows=$('#rows');
+function add(a,b,t){n++;const tr=document.createElement('tr');tr.innerHTML=`<td>${n}</td><td></td><td></td><td class="t">${t}</td>`;tr.children[1].textContent=a;tr.children[2].textContent=b;rows.prepend(tr)}
+add('陳先生','請問可以開發票嗎','10:21:08');add('林小姐','想訂 3 組亞麻餐墊','10:34:52');
+$('#f').onsubmit=e=>{e.preventDefault();const d=new Date(),p=x=>String(x).padStart(2,'0');add($('#nm').value||'訪客',$('#msg').value||'(空白)',`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`);$('#msg').value=''};
+// hero 影片：靜音自動播放一次、停在最後一格
+const v=$('#v');v.addEventListener('ended',()=>{});
+v.play&&v.play().catch(()=>{});
+// 供截圖用：window.__demo.goto(state)
+window.__demo={goto(s){setFix(s>=1);step=s>=2?(s===2?2:5):0;renderSteps();rows.innerHTML='';n=0;add('陳先生','請問可以開發票嗎','10:21:08');add('林小姐','想訂 3 組亞麻餐墊','10:34:52');if(s>=4){add('王小美','想問杯子有沒有現貨','10:40:15')}}};
+</script>
+</body>
+</html>
